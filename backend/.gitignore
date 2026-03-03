@@ -1,0 +1,11 @@
+# dependencies
+node_modules/
+
+# env files
+.env
+
+# logs
+*.log
+
+# OS / editor noise
+.DS_Store
