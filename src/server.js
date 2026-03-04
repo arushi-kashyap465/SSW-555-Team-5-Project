@@ -20,14 +20,14 @@ app.engine("handlebars", engine({ defaultLayout: "main" }));
 app.set("view engine", "handlebars");
 app.set("views", path.join(__dirname, "views"));
 
-configRoutes(app);
-
 app.get("/", (req, res) => {
   res.render("home", {
     title: "QR Attendance System",
     message: "Welcome to the QR Attendance Web App!"
   });
 });
+
+configRoutes(app);
 
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
