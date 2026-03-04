@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { createCourse, getCourseById, getAllCourses } from '../data/courses';
+import { createSession, getSessionById, getAllSessions } from '../data/sessions.js';
 
 const router = Router();
 

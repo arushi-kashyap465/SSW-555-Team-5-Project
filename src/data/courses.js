@@ -1,6 +1,6 @@
 import { ObjectId } from 'mongodb';
-import { courses } from '../config/mongoCollections';
-import { checkId, checkString } from '../helpers';
+import { courses } from '../config/mongoCollections.js';
+import { checkId, checkString } from '../helpers.js';
 
 // Defines courses
 // . Whether they be an in-person or online class, any methods will be listed here.

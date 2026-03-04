@@ -1,6 +1,6 @@
 import { ObjectId } from 'mongodb';
-import { attendanceRecords } from '../config/mongoCollections';
-import { checkId } from '../helpers';
+import { attendanceRecords } from '../config/mongoCollections.js';
+import { checkId } from '../helpers.js';
 
 // attendanceRecords. Contains the attendance records for each session.
 

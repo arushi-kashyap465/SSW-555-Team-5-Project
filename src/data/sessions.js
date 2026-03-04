@@ -1,5 +1,5 @@
 import { ObjectId } from 'mongodb';
-import { sessions } from '../config/mongoCollections';
+import { sessions } from '../config/mongoCollections.js';
 
 // sessions.js
 // Lists the sessions alongside the attendees, who registered, the organizer, etc.

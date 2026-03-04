@@ -3,7 +3,7 @@ import { engine } from "express-handlebars";
 import path from "path";
 import { fileURLToPath } from "url";
 
-import configRoutes from "./index.js";
+import configRoutes from "./routes/index.js";
 
 const app = express();
 const port = 3000;
