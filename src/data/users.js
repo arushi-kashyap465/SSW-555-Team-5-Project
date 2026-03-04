@@ -1,0 +1,1 @@
+// Defines users. Whether they be an instructor or a student, any methods will be listed here.
