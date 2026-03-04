@@ -149,6 +149,6 @@ module.exports = {
     email: String,
     password: String (stored as hash),
     role: String (either "student" or "instructor". Case insenstive),
-    
+
 }
 */
