@@ -1,6 +1,6 @@
-const { ObjectId } = require("mongodb");
-const bcrypt = require("bcrypt");
-const { users: getUsersCollection } = require("../config/mongoCollections.js");
+import { ObjectId } from "mongodb";
+import bcrypt from "bcrypt";
+import { users as getUsersCollection } from "../config/mongoCollections.js";
 
 const SALT_ROUNDS = 12;
 
@@ -48,7 +48,7 @@ function checkId(id, fieldName = "_id") {
   return s;
 }
 
-async function registerUser(name, email, password, role) {
+export async function registerUser(name, email, password, role) {
   const usersCol = await getUsersCollection();
 
   name = checkString(name, "name");
@@ -88,7 +88,7 @@ async function registerUser(name, email, password, role) {
   };
 }
 
-async function getUserById(id) {
+export async function getUserById(id) {
   const usersCol = await getUsersCollection();
   id = checkId(id);
 
@@ -107,7 +107,7 @@ async function getUserById(id) {
   };
 }
 
-async function getAllUsers() {
+export async function getAllUsers() {
   const usersCol = await getUsersCollection();
   const docs = await usersCol.find({}).toArray();
 
@@ -121,7 +121,7 @@ async function getAllUsers() {
   }));
 }
 
-async function deleteUser(id) {
+export async function deleteUser(id) {
   const usersCol = await getUsersCollection();
   id = checkId(id);
 
@@ -132,23 +132,3 @@ async function deleteUser(id) {
 
   return { deleted: true, _id: id };
 }
-
-module.exports = {
-  registerUser,
-  getUserById,
-  getAllUsers,
-  deleteUser,
-};
-
-// Defines users. Whether they be an instructor or a student, any methods will be listed here.
-
-/*
-{
-    _id: ObjectId,
-    name: String,
-    email: String,
-    password: String (stored as hash),
-    role: String (either "student" or "instructor". Case insenstive),
-
-}
-*/

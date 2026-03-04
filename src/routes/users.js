@@ -1,10 +1,12 @@
-const router = require("express").Router();
-const {
+import express from "express";
+import {
   registerUser,
   getUserById,
   getAllUsers,
   deleteUser,
-} = require("../data/users");
+} from "../data/users.js";
+
+const router = express.Router();
 
 router.post("/users/register", async (req, res) => {
   const { name, email, password, role } = req.body;
@@ -44,5 +46,4 @@ router.delete("/users/:id", async (req, res) => {
   }
 });
 
-module.exports = router;
-
+export default router;
