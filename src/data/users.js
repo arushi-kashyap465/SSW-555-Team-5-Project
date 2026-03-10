@@ -1,6 +1,6 @@
-const { ObjectId } = require("mongodb");
-const bcrypt = require("bcrypt");
-const { users: getUsersCollection } = require("../config/mongoCollections.js");
+import { ObjectId } from "mongodb";
+import bcrypt from "bcrypt";
+import { users as getUsersCollection } from "../config/mongoCollections.js";
 
 const SALT_ROUNDS = 12;
 
