@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Scanner App - Auth Test</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <h1>Scanner App - Auth Test</h1>
+    <div>
+      <button id="tab-register">Register</button>
+      <button id="tab-login">Login (demo)</button>
+    </div>
+
+      <form id="register-form">
+        <div>
+          <label for="reg-name">Name</label>
+          <input id="reg-name" type="text" required />
+        </div>
+        <div>
+          <label for="reg-email">Email</label>
+          <input id="reg-email" type="email" required />
+        </div>
+        <div>
+          <label for="reg-password">Password</label>
+          <input id="reg-password" type="password" required />
+        </div>
+        <div>
+          <label for="reg-role">Role</label>
+          <select id="reg-role" required>
+            <option value="student">Student</option>
+            <option value="instructor">Instructor</option>
+          </select>
+        </div>
+        <button type="submit" id="reg-submit">Register</button>
+        <div id="reg-message"></div>
+      </form>
+
+      <form id="login-form" style="display: none">
+        <div>
+          <label for="login-email">Email</label>
+          <input id="login-email" type="email" required />
+        </div>
+        <div>
+          <label for="login-password">Password</label>
+          <input id="login-password" type="password" required />
+        </div>
+        <button type="submit" id="login-submit">Login</button>
+        <div id="login-message"></div>
+      </form>
+
+      <p>
+        Backend must be running on http://localhost:3001.<br />
+        Register uses POST /api/users/register.<br />
+        Login demo fetches GET /api/users and matches by email only.
+      </p>
+
+    <script>
+      const API_BASE = "http://localhost:3001/api";
+
+      const tabRegister = document.getElementById("tab-register");
+      const tabLogin = document.getElementById("tab-login");
+      const registerForm = document.getElementById("register-form");
+      const loginForm = document.getElementById("login-form");
+
+      tabRegister.addEventListener("click", () => {
+        tabRegister.classList.add("active");
+        tabLogin.classList.remove("active");
+        registerForm.style.display = "";
+        loginForm.style.display = "none";
+      });
+
+      tabLogin.addEventListener("click", () => {
+        tabLogin.classList.add("active");
+        tabRegister.classList.remove("active");
+        loginForm.style.display = "";
+        registerForm.style.display = "none";
+      });
+
+      // Register handler -> POST /api/users/register
+      registerForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const name = document.getElementById("reg-name").value.trim();
+        const email = document.getElementById("reg-email").value.trim();
+        const password = document.getElementById("reg-password").value;
+        const role = document.getElementById("reg-role").value;
+        const msgEl = document.getElementById("reg-message");
+        const btn = document.getElementById("reg-submit");
+
+        msgEl.textContent = "";
+        msgEl.className = "message";
+        btn.disabled = true;
+
+        try {
+          const res = await fetch(API_BASE + "/users/register", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name, email, password, role }),
+          });
+
+          const data = await res.json().catch(() => ({}));
+
+          if (!res.ok) {
+            throw new Error(data.error || "Registration failed");
+          }
+
+          msgEl.textContent =
+            "Registered! User ID: " + (data._id || JSON.stringify(data));
+          msgEl.classList.add("success");
+          registerForm.reset();
+        } catch (err) {
+          msgEl.textContent = err.message || "Something went wrong";
+          msgEl.classList.add("error");
+        } finally {
+          btn.disabled = false;
+        }
+      });
+
+      // Login -> POST /api/users/login
+      loginForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const email = document.getElementById("login-email").value.trim();
+        const password = document.getElementById("login-password").value;
+        const msgEl = document.getElementById("login-message");
+        const btn = document.getElementById("login-submit");
+
+        msgEl.textContent = "";
+        msgEl.className = "message";
+        btn.disabled = true;
+
+        try {
+          const res = await fetch(API_BASE + "/users/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password }),
+          });
+
+          const data = await res.json().catch(() => ({}));
+
+          if (!res.ok) {
+            throw new Error(data.error || "Login failed");
+          }
+
+          msgEl.textContent =
+            "Logged in as " +
+            (data.user?.name || "") +
+            " (" +
+            (data.user?.role || "") +
+            ")";
+          msgEl.classList.add("success");
+        } catch (err) {
+          msgEl.textContent = err.message || "Something went wrong";
+          msgEl.classList.add("error");
+        } finally {
+          btn.disabled = false;
+        }
+      });
+    </script>
+  </body>
+  </html>
+

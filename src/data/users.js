@@ -88,7 +88,33 @@ export async function registerUser(name, email, password, role) {
   };
 }
 
-export async function getUserById(id) {
+async function loginUser(email, password) {
+    const usersCol = await getUsersCollection();
+  
+    email = normalizeEmail(email);
+    password = validatePassword(password);
+  
+    const user = await usersCol.findOne({ email });
+    if (!user || !user.password) {
+      throw new Error("Invalid email or password");
+    }
+  
+    const match = await bcrypt.compare(password, user.password);
+    if (!match) {
+      throw new Error("Invalid email or password");
+    }
+  
+    return {
+      _id: user._id.toString(),
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      createdAt: user.createdAt,
+      updatedAt: user.updatedAt,
+    };
+  }
+
+async function getUserById(id) {
   const usersCol = await getUsersCollection();
   id = checkId(id);
 
@@ -132,3 +158,23 @@ export async function deleteUser(id) {
 
   return { deleted: true, _id: id };
 }
+
+module.exports = {
+  registerUser,
+  getUserById,
+  getAllUsers,
+  deleteUser,
+};
+
+// Defines users. Whether they be an instructor or a student, any methods will be listed here.
+
+/*
+{
+    _id: ObjectId,
+    name: String,
+    email: String,
+    password: String (stored as hash),
+    role: String (either "student" or "instructor". Case insenstive),
+
+}
+*/
