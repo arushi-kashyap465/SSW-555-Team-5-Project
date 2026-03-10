@@ -1,15 +1,18 @@
-const { MongoClient } = require('mongodb');
+import { MongoClient } from 'mongodb';
+import { fileURLToPath } from 'url';
 
 const MONGO_URL = process.env.MONGO_URL || 'mongodb://localhost:27017';
-const DB_NAME = process.env.MONGO_DB_NAME || 'SSW-555-Team-5-Project-Scanner-Application';
+const DB_NAME =
+  process.env.MONGO_DB_NAME || 'SSW-555-Team-5-Project-Scanner-Application';
 
-async function main() {
+export async function main() {
   const client = new MongoClient(MONGO_URL);
+
   try {
     await client.connect();
     console.log('Connected to MongoDB:', MONGO_URL);
-    const db = client.db(DB_NAME);
 
+    const db = client.db(DB_NAME);
     const usersCol = db.collection('users');
 
     await usersCol.deleteMany({});
@@ -50,8 +53,8 @@ async function main() {
   }
 }
 
-if (require.main === module) {
+const isMainModule = process.argv[1] === fileURLToPath(import.meta.url);
+
+if (isMainModule) {
   main().then(() => process.exit(0));
 }
-
-module.exports = { main };
