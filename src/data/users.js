@@ -48,7 +48,7 @@ function checkId(id, fieldName = "_id") {
   return s;
 }
 
-async function registerUser(name, email, password, role) {
+export async function registerUser(name, email, password, role) {
   const usersCol = await getUsersCollection();
 
   name = checkString(name, "name");
@@ -133,7 +133,7 @@ async function getUserById(id) {
   };
 }
 
-async function getAllUsers() {
+export async function getAllUsers() {
   const usersCol = await getUsersCollection();
   const docs = await usersCol.find({}).toArray();
 
@@ -147,7 +147,7 @@ async function getAllUsers() {
   }));
 }
 
-async function deleteUser(id) {
+export async function deleteUser(id) {
   const usersCol = await getUsersCollection();
   id = checkId(id);
 
@@ -161,7 +161,6 @@ async function deleteUser(id) {
 
 module.exports = {
   registerUser,
-  loginUser,
   getUserById,
   getAllUsers,
   deleteUser,
