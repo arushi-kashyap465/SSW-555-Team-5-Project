@@ -1,10 +1,14 @@
-const express = require("express");
-const cors = require("cors");
+import dotenv from "dotenv";
+import express from "express";
+import cors from "cors";
 
-const healthRoutes = require("./routes/health");
-const usersRoutes = require("./routes/users");
+import healthRoutes from "./routes/health.js";
+import usersRoutes from "./routes/users.js";
+
+dotenv.config();
 
 const app = express();
+const PORT = process.env.PORT || 3001;
 
 app.use(cors());
 app.use(express.json());
@@ -15,4 +19,6 @@ app.use(express.static("frontend"));
 app.use("/api/health", healthRoutes);
 app.use("/api", usersRoutes);
 
-module.exports = app;
+app.listen(PORT, () => {
+  console.log(`Backend running on port ${PORT}`);
+});

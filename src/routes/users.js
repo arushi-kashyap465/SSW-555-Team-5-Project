@@ -1,11 +1,12 @@
-const router = require("express").Router();
-const {
+import express from "express";
+import {
   registerUser,
-  loginUser,
   getUserById,
   getAllUsers,
   deleteUser,
-} = require("../data/users");
+} from "../data/users.js";
+
+const router = express.Router();
 
 router.post("/users/register", async (req, res) => {
   const { name, email, password, role } = req.body;
@@ -13,17 +14,6 @@ router.post("/users/register", async (req, res) => {
   try {
     const user = await registerUser(name, email, password, role);
     return res.status(201).json(user);
-  } catch (err) {
-    return res.status(400).json({ error: err.message });
-  }
-});
-
-router.post("/users/login", async (req, res) => {
-  const { email, password } = req.body;
-
-  try {
-    const user = await loginUser(email, password);
-    return res.json({ loggedIn: true, user });
   } catch (err) {
     return res.status(400).json({ error: err.message });
   }
@@ -56,5 +46,4 @@ router.delete("/users/:id", async (req, res) => {
   }
 });
 
-module.exports = router;
-
+export default router;
