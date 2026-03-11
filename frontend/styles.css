@@ -20,6 +20,21 @@ button {
   padding: 0.35rem 0.7rem;
 }
 
+/* Create event button styling */
+#create-event {
+  margin-left: 0.5rem;
+  background-color: #0b79d0;
+  color: #fff;
+  border: none;
+  padding: 0.45rem 0.9rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+#create-event:active {
+  transform: translateY(1px);
+}
+
 #reg-message,
 #login-message {
   margin-top: 0.5rem;
