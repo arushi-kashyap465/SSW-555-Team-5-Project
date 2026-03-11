@@ -58,3 +58,8 @@ export const getAllSessions = async () => {
     const allSessions = await sessionsCollection.find({}).toArray();
     return allSessions;
 }
+
+/*
+TODO: Implement a route that generates a QR code token, hashes it, and updates the session with the tokenHash. This will be used for students to check in to the session.
+TODO: Implement a route that allows students to check in to a session by providing the QR code for the session so that the students can scan it.
+*/

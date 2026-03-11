@@ -7,53 +7,65 @@
   </head>
   <body>
     <h1>Scanner App - Auth Test</h1>
+
     <div>
       <button id="tab-register">Register</button>
       <button id="tab-login">Login (demo)</button>
     </div>
 
-      <form id="register-form">
-        <div>
-          <label for="reg-name">Name</label>
-          <input id="reg-name" type="text" required />
-        </div>
-        <div>
-          <label for="reg-email">Email</label>
-          <input id="reg-email" type="email" required />
-        </div>
-        <div>
-          <label for="reg-password">Password</label>
-          <input id="reg-password" type="password" required />
-        </div>
-        <div>
-          <label for="reg-role">Role</label>
-          <select id="reg-role" required>
-            <option value="student">Student</option>
-            <option value="instructor">Instructor</option>
-          </select>
-        </div>
-        <button type="submit" id="reg-submit">Register</button>
-        <div id="reg-message"></div>
-      </form>
+    <form id="register-form">
+      <div>
+        <label for="reg-name">Name</label>
+        <input id="reg-name" type="text" required />
+      </div>
+      <div>
+        <label for="reg-email">Email</label>
+        <input id="reg-email" type="email" required />
+      </div>
+      <div>
+        <label for="reg-password">Password</label>
+        <input id="reg-password" type="password" required />
+      </div>
+      <div>
+        <label for="reg-role">Role</label>
+        <select id="reg-role" required>
+          <option value="student">Student</option>
+          <option value="instructor">Instructor</option>
+        </select>
+      </div>
+      <button type="submit" id="reg-submit">Register</button>
+      <div id="reg-message"></div>
+    </form>
 
-      <form id="login-form" style="display: none">
-        <div>
-          <label for="login-email">Email</label>
-          <input id="login-email" type="email" required />
-        </div>
-        <div>
-          <label for="login-password">Password</label>
-          <input id="login-password" type="password" required />
-        </div>
-        <button type="submit" id="login-submit">Login</button>
-        <div id="login-message"></div>
-      </form>
+    <form id="login-form" style="display: none">
+      <div>
+        <label for="login-email">Email</label>
+        <input id="login-email" type="email" required />
+      </div>
+      <div>
+        <label for="login-password">Password</label>
+        <input id="login-password" type="password" required />
+      </div>
+      <button type="submit" id="login-submit">Login</button>
+      <div id="login-message"></div>
+    </form>
 
-      <p>
-        Backend must be running on http://localhost:3001.<br />
-        Register uses POST /api/users/register.<br />
-        Login demo fetches GET /api/users and matches by email only.
-      </p>
+    <hr />
+
+    <section id="qr-section">
+      <h2>QR Code Test</h2>
+      <button id="generate-qr">Generate QR Code</button>
+      <div id="qr-message" class="message"></div>
+      <br />
+      <img id="qr-image" alt="Generated QR Code" style="max-width: 300px; display: none;" />
+    </section>
+
+    <p>
+      Backend must be running on http://localhost:3001.<br />
+      Register uses POST /api/users/register.<br />
+      Login uses POST /api/users/login.<br />
+      QR test uses GET /api/qr/test.
+    </p>
 
     <script>
       const API_BASE = "http://localhost:3001/api";
@@ -62,6 +74,10 @@
       const tabLogin = document.getElementById("tab-login");
       const registerForm = document.getElementById("register-form");
       const loginForm = document.getElementById("login-form");
+
+      const qrButton = document.getElementById("generate-qr");
+      const qrImage = document.getElementById("qr-image");
+      const qrMessage = document.getElementById("qr-message");
 
       tabRegister.addEventListener("click", () => {
         tabRegister.classList.add("active");
@@ -116,7 +132,7 @@
         }
       });
 
-      // Login -> POST /api/users/login
+      // Login handler -> POST /api/users/login
       loginForm.addEventListener("submit", async (e) => {
         e.preventDefault();
         const email = document.getElementById("login-email").value.trim();
@@ -155,7 +171,37 @@
           btn.disabled = false;
         }
       });
+
+      // QR Code handler -> GET /api/qr/test
+      qrButton.addEventListener("click", async () => {
+        qrMessage.textContent = "";
+        qrMessage.className = "message";
+        qrButton.disabled = true;
+
+        try {
+          const testQRHealth = "/health/qr";
+          const QR = "/qr";
+          const res = await fetch(API_BASE + testQRHealth);
+
+          const data = await res.json().catch(() => ({}));
+
+          if (!res.ok) {
+            throw new Error(data.error || "Failed to generate QR code");
+          }
+
+          qrImage.src = data.qr;
+          qrImage.style.display = "block";
+          qrMessage.textContent = "QR code generated successfully!";
+          qrMessage.classList.add("success");
+        } catch (err) {
+          qrImage.style.display = "none";
+          qrMessage.textContent = err.message || "Something went wrong";
+          qrMessage.classList.add("error");
+        } finally {
+          qrButton.disabled = false;
+        }
+      });
     </script>
   </body>
-  </html>
+</html>
 

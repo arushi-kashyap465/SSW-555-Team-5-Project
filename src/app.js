@@ -20,5 +20,5 @@ app.use("/api/health", healthRoutes);
 app.use("/api", usersRoutes);
 
 app.listen(PORT, () => {
-  console.log(`Backend running on port ${PORT}`);
+  console.log(`Backend running on port http://localhost:${PORT}`);
 });

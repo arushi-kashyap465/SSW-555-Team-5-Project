@@ -2,59 +2,23 @@ import { ObjectId } from "mongodb";
 import bcrypt from "bcrypt";
 import { users as getUsersCollection } from "../config/mongoCollections.js";
 
+// Imports data validation functions from helpers/validation.js
+import { 
+  checkString, 
+  checkAndNormalizeEmail, 
+  checkPassword, checkId, 
+  checkRole 
+} from "../helpers/validation.js";
+
 const SALT_ROUNDS = 12;
-
-function checkString(value, fieldName) {
-  if (typeof value !== "string") {
-    throw new Error(`${fieldName} must be a string`);
-  }
-  const trimmed = value.trim();
-  if (!trimmed) {
-    throw new Error(`${fieldName} cannot be empty or just spaces`);
-  }
-  return trimmed;
-}
-
-function normalizeEmail(email) {
-  const e = checkString(email, "email").toLowerCase();
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(e)) {
-    throw new Error("email is not a valid email address");
-  }
-  return e;
-}
-
-function normalizeRole(role) {
-  const r = checkString(role, "role").toLowerCase();
-  if (!["student", "instructor"].includes(r)) {
-    throw new Error('role must be "student" or "instructor"');
-  }
-  return r;
-}
-
-function validatePassword(password) {
-  const p = checkString(password, "password");
-  if (p.length < 6) {
-    throw new Error("password must be at least 6 characters long");
-  }
-  return p;
-}
-
-function checkId(id, fieldName = "_id") {
-  const s = checkString(id, fieldName);
-  if (!ObjectId.isValid(s)) {
-    throw new Error(`${fieldName} is not a valid ObjectId`);
-  }
-  return s;
-}
 
 export async function registerUser(name, email, password, role) {
   const usersCol = await getUsersCollection();
 
   name = checkString(name, "name");
-  email = normalizeEmail(email);
-  password = validatePassword(password);
-  role = normalizeRole(role);
+  email = checkAndNormalizeEmail(email);
+  password = checkPassword(password);
+  role = checkRole(role);
 
   const existing = await usersCol.findOne({ email });
   if (existing) {
@@ -88,11 +52,11 @@ export async function registerUser(name, email, password, role) {
   };
 }
 
-async function loginUser(email, password) {
+export async function loginUser(email, password) {
     const usersCol = await getUsersCollection();
   
-    email = normalizeEmail(email);
-    password = validatePassword(password);
+    email = checkAndNormalizeEmail(email);
+    password = checkPassword(password);
   
     const user = await usersCol.findOne({ email });
     if (!user || !user.password) {
@@ -114,7 +78,7 @@ async function loginUser(email, password) {
     };
   }
 
-async function getUserById(id) {
+export async function getUserById(id) {
   const usersCol = await getUsersCollection();
   id = checkId(id);
 
@@ -158,13 +122,6 @@ export async function deleteUser(id) {
 
   return { deleted: true, _id: id };
 }
-
-module.exports = {
-  registerUser,
-  getUserById,
-  getAllUsers,
-  deleteUser,
-};
 
 // Defines users. Whether they be an instructor or a student, any methods will be listed here.
 
