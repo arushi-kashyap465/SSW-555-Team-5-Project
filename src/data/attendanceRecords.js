@@ -11,3 +11,17 @@ import { checkId } from '../helpers/validation.js';
 
 }
 */
+
+export const getAttendanceRecordsBySession = async (sessionId) => {
+    checkId(sessionId);
+  
+    const attendanceCollection = await attendanceRecords();
+  
+    const records = await attendanceCollection
+      .find({ session_id: new ObjectId(sessionId) })
+      .toArray();
+  
+    return records;
+  };
+
+  
