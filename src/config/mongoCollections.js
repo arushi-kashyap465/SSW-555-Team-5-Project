@@ -21,3 +21,4 @@ export const users = getCollectionFn('users');
 export const courses = getCollectionFn('courses');
 export const sessions = getCollectionFn('sessions');
 export const attendanceRecords = getCollectionFn('attendanceRecords');
+export const events = getCollectionFn('events');

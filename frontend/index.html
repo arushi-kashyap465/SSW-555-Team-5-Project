@@ -79,6 +79,7 @@
       const qrButton = document.getElementById("generate-qr");
       const qrImage = document.getElementById("qr-image");
       const qrMessage = document.getElementById("qr-message");
+      const createEventButton = document.getElementById("create-event");
 
       tabRegister.addEventListener("click", () => {
         tabRegister.classList.add("active");
@@ -200,6 +201,39 @@
           qrMessage.classList.add("error");
         } finally {
           qrButton.disabled = false;
+        }
+      });
+
+      // Create event handler -> POST /api/events
+      createEventButton.addEventListener("click", async () => {
+        qrMessage.textContent = "";
+        qrMessage.className = "message";
+        createEventButton.disabled = true;
+
+        try {
+          const payload = {
+            title: "Test Event " + new Date().toLocaleString(),
+            details: "Created from frontend/index.html",
+          };
+
+          const res = await fetch(API_BASE + "/events", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            throw new Error(data.error || "Failed to create event");
+          }
+
+          qrMessage.textContent = "Event created! ID: " + (data._id || "");
+          qrMessage.classList.add("success");
+        } catch (err) {
+          qrMessage.textContent = err.message || "Something went wrong";
+          qrMessage.classList.add("error");
+        } finally {
+          createEventButton.disabled = false;
         }
       });
     </script>
