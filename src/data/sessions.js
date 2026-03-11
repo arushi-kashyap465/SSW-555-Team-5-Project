@@ -15,6 +15,7 @@ import { sessions } from '../config/mongoCollections.js';
     tokenHash: (hash of QR Code token),
     active: Boolean (whether the session is active or not),
     created_at: Date
+    attendance: [RecordObject]
 }
 */
 
@@ -46,7 +47,8 @@ export const createSession = async (class_id, created_by, title, starts_at, ends
         ends_at,
         tokenHash: null, // To be implemented when QR code generation is added
         active: false, // Default to false until the session is started by the instructor
-        created_at: new Date()
+        created_at: new Date(),
+        attendance: []
     };
     const insertInfo = await sessionsCollection.insertOne(newSession);
     if (!insertInfo.acknowledged || !insertInfo.insertedId) throw "Could not create session!";
