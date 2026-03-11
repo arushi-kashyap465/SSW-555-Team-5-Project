@@ -4,6 +4,7 @@ import cors from "cors";
 
 import healthRoutes from "./routes/health.js";
 import usersRoutes from "./routes/users.js";
+import eventsRoutes from "./routes/events.js";
 
 dotenv.config();
 
@@ -18,6 +19,7 @@ app.use(express.static("frontend"));
 
 app.use("/api/health", healthRoutes);
 app.use("/api", usersRoutes);
+app.use("/api", eventsRoutes);
 
 app.listen(PORT, () => {
   console.log(`Backend running on port http://localhost:${PORT}`);
