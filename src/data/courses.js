@@ -16,6 +16,42 @@ import { checkId, checkString } from '../helpers/validation.js';
 }
 */
 
+/*
+{
+    _id: ObjectId,
+    class_id: ObjectId,
+    created_by: ObjectId (instructor),
+    title: String,
+    starts_at: String (MM/DD/YYYY HH:MM) (To be Date),
+    ends_at: String (MM/DD/YYYY HH:MM) (To be Date),
+    tokenHash: (hash of QR Code token),
+    active: Boolean (whether the session is active or not),
+    created_at: Date
+    attendance: [RecordObject]
+}
+
+RecordObject {
+    student_id: ObjectId,
+    status: String (e.g. "present", "late", "absent"),
+    check_in_time: Date,
+    method: String (e.g. "qr", "manual")
+}
+*/
+
+const createRecordObjectArray = (course_id) => {
+    const students = getStudentsInCourse(course_id);
+    // Creates an array of blank attendance records for each student in the course when a session is created
+    const recordObjectArray = students.map(student_id => ({
+        student_id: new ObjectId(student_id),
+        status: null,
+        check_in_time: null,
+        method: null
+    }));
+    return recordObjectArray;
+    // For status null => "-"
+
+}
+
 export const getCourseById = async (id) => {
     id = checkId(id, "Course ID");
     const coursesCollection = await courses();
@@ -64,4 +100,13 @@ export const getAllCourses = async () => {
     const coursesCollection = await courses();
     const allCourses = await coursesCollection.find({}).toArray();
     return allCourses;
+}
+
+export const getStudentsInCourse = async (course_id) => {
+    course_id = checkId(course_id, "Course ID");
+    const coursesCollection = await courses();
+    const course = await coursesCollection.findOne({ _id: new ObjectId(course_id) });
+
+    if (!course) throw "Course not found!";
+    return course.students;
 }

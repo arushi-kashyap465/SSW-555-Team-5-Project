@@ -1,5 +1,7 @@
 import { ObjectId } from 'mongodb';
 import { sessions } from '../config/mongoCollections.js';
+import { checkId, checkString } from '../helpers/validation.js';
+import { getStudentsInCourse } from './courses.js';
 
 // sessions.js
 // Lists the sessions alongside the attendees, who registered, the organizer, etc.
@@ -15,8 +17,30 @@ import { sessions } from '../config/mongoCollections.js';
     tokenHash: (hash of QR Code token),
     active: Boolean (whether the session is active or not),
     created_at: Date
+    attendance: [RecordObject]
+}
+
+RecordObject {
+    student_id: ObjectId,
+    status: String (e.g. "present", "late", "absent"),
+    check_in_time: Date,
+    method: String (e.g. "qr", "manual")
 }
 */
+
+const createRecordObjectArray = (course_id) => {
+    const students = getStudentsInCourse(course_id);
+    // Creates an array of blank attendance records for each student in the course when a session is created
+    const recordObjectArray = students.map(student_id => ({
+        student_id: new ObjectId(student_id),
+        status: null,
+        check_in_time: null,
+        method: null
+    }));
+    return recordObjectArray;
+    // For status null => "-"
+
+}
 
 export const getSessionById = async (id) => {
     id = checkId(id, "Session ID");
@@ -37,6 +61,7 @@ export const createSession = async (class_id, created_by, title, starts_at, ends
     starts_at = checkString(starts_at, "Session Start Time");
     ends_at = checkString(ends_at, "Session End Time");
     const sessionsCollection = await sessions();
+    const attedanceRecords = createRecordObjectArray(class_id);
 
     const newSession = {
         class_id: new ObjectId(class_id),
@@ -46,7 +71,8 @@ export const createSession = async (class_id, created_by, title, starts_at, ends
         ends_at,
         tokenHash: null, // To be implemented when QR code generation is added
         active: false, // Default to false until the session is started by the instructor
-        created_at: new Date()
+        created_at: new Date(),
+        attendance: attedanceRecords
     };
     const insertInfo = await sessionsCollection.insertOne(newSession);
     if (!insertInfo.acknowledged || !insertInfo.insertedId) throw "Could not create session!";
