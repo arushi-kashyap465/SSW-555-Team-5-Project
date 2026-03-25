@@ -1,12 +1,24 @@
 import express from "express";
 import {
   registerUser,
+  loginUser,
   getUserById,
   getAllUsers,
   deleteUser,
 } from "../data/users.js";
 
 const router = express.Router();
+
+router.post("/users/login", async (req, res) => {
+  const { email, password } = req.body;
+
+  try {
+    const user = await loginUser(email, password);
+    return res.json({ user });
+  } catch (err) {
+    return res.status(401).json({ error: err.message });
+  }
+});
 
 router.post("/users/register", async (req, res) => {
   const { name, email, password, role } = req.body;

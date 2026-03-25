@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Events</title>
+    <link rel="stylesheet" href="events.css" />
+  </head>
+  <body>
+    <div class="events-layout">
+      <a class="back-link" href="index.html">← Back</a>
+      <header>
+        <h1>Events</h1>
+        <p class="subtitle">Open an event to see who checked in.</p>
+      </header>
+
+      <div id="global-error" class="state-message error" hidden></div>
+      <div id="events-root" class="events-list" aria-live="polite"></div>
+      <div id="empty-state" class="empty-events" hidden>No events yet.</div>
+    </div>
+
+    <script>
+      const api = (path) =>
+        new URL("/api" + path, window.location.origin).toString();
+
+      async function readJsonResponse(res) {
+        const text = await res.text();
+        try {
+          return JSON.parse(text);
+        } catch {
+          const clip = text.replace(/\s+/g, " ").trim().slice(0, 160);
+          const html = /<!DOCTYPE|Cannot GET|<html/i.test(text);
+          throw new Error(
+            html
+              ? `Server returned a web page instead of JSON (HTTP ${res.status}). Fully stop and restart the backend (npm start) so routes match this project.`
+              : `Bad response (HTTP ${res.status}): ${clip || "empty body"}`
+          );
+        }
+      }
+
+      function esc(s) {
+        const d = document.createElement("div");
+        d.textContent = s == null ? "" : String(s);
+        return d.innerHTML;
+      }
+
+      function formatWhen(iso) {
+        if (!iso) return "—";
+        try {
+          return new Date(iso).toLocaleString(undefined, {
+            dateStyle: "medium",
+            timeStyle: "short",
+          });
+        } catch {
+          return iso;
+        }
+      }
+
+      const detailCache = new Map();
+
+      async function loadAttendance(eventId) {
+        if (detailCache.has(eventId)) return detailCache.get(eventId);
+        const res = await fetch(api("/events/" + encodeURIComponent(eventId) + "/attendance"));
+        const data = await readJsonResponse(res);
+        if (!res.ok) throw new Error(data.error || "Could not load attendees");
+        detailCache.set(eventId, data);
+        return data;
+      }
+
+      function renderAttendees(container, attendees) {
+        if (!attendees.length) {
+          container.innerHTML =
+            '<p class="state-message">No check-ins yet.</p>';
+          return;
+        }
+        let rows = "";
+        for (const a of attendees) {
+          rows +=
+            "<tr><td>" +
+            esc(a.name) +
+            "</td><td>" +
+            esc(a.email) +
+            "</td><td>" +
+            esc(formatWhen(a.checkedInAt)) +
+            "</td><td>" +
+            esc(a.method) +
+            "</td></tr>";
+        }
+        container.innerHTML =
+          '<p class="attendees-heading">Attendees</p>' +
+          '<div class="attendees-table-wrap"><table class="attendees-table">' +
+          "<thead><tr><th>Name</th><th>Email</th><th>Checked in</th><th>Method</th></tr></thead>" +
+          "<tbody>" +
+          rows +
+          "</tbody></table></div>";
+      }
+
+      async function openDetail(detailsEl, bodyEl, eventId, summaryMeta) {
+        bodyEl.innerHTML =
+          '<p class="state-message">Loading…</p>';
+        try {
+          const data = await loadAttendance(eventId);
+          const ev = data.event;
+          summaryMeta.textContent =
+            formatWhen(ev.startsAt) !== "—"
+              ? formatWhen(ev.startsAt) + (ev.endsAt ? " · ends " + formatWhen(ev.endsAt) : "")
+              : "Created " + formatWhen(ev.createdAt);
+          const detailP = detailsEl.querySelector(".event-details-text");
+          if (detailP) {
+            detailP.textContent = ev.details || "";
+            detailP.hidden = !ev.details;
+          }
+          renderAttendees(bodyEl, data.attendees);
+        } catch (e) {
+          bodyEl.innerHTML =
+            '<p class="state-message error">' + esc(e.message) + "</p>";
+        }
+      }
+
+      async function main() {
+        const root = document.getElementById("events-root");
+        const empty = document.getElementById("empty-state");
+        const globalErr = document.getElementById("global-error");
+
+        globalErr.hidden = true;
+        root.innerHTML = "";
+
+        let list;
+        try {
+          const res = await fetch(api("/events"));
+          list = await readJsonResponse(res);
+          if (!res.ok || !Array.isArray(list)) {
+            globalErr.textContent =
+              (list && list.error) || "Could not load events.";
+            globalErr.hidden = false;
+            return;
+          }
+        } catch (e) {
+          globalErr.textContent = e.message || "Could not load events.";
+          globalErr.hidden = false;
+          return;
+        }
+
+        if (!list.length) {
+          empty.hidden = false;
+          return;
+        }
+        empty.hidden = true;
+
+        for (const ev of list) {
+          const id = String(ev._id ?? "");
+          const card = document.createElement("details");
+          card.className = "event-card";
+
+          const summary = document.createElement("summary");
+          const titleRow = document.createElement("div");
+          titleRow.className = "event-title-row";
+          const h2 = document.createElement("p");
+          h2.className = "event-title";
+          h2.textContent = ev.title;
+          const meta = document.createElement("p");
+          meta.className = "event-meta";
+          meta.textContent =
+            formatWhen(ev.startsAt) !== "—"
+              ? formatWhen(ev.startsAt)
+              : formatWhen(ev.createdAt);
+          titleRow.appendChild(h2);
+          titleRow.appendChild(meta);
+
+          const badge = document.createElement("span");
+          badge.className = "badge";
+          const n = Number(ev.attendeeCount ?? 0);
+          badge.textContent = n === 1 ? "1 attended" : n + " attended";
+
+          summary.appendChild(titleRow);
+          summary.appendChild(badge);
+
+          const body = document.createElement("div");
+          body.className = "event-body";
+
+          const detailsText = document.createElement("p");
+          detailsText.className = "event-details-text";
+          detailsText.hidden = !ev.details;
+          detailsText.textContent = ev.details || "";
+
+          const detailHost = document.createElement("div");
+          detailHost.className = "attendees-host";
+
+          body.appendChild(detailsText);
+          body.appendChild(detailHost);
+
+          card.appendChild(summary);
+          card.appendChild(body);
+
+          card.addEventListener("toggle", () => {
+            if (!card.open) return;
+            if (!id) return;
+            if (detailHost.dataset.loaded === "1") return;
+            detailHost.dataset.loaded = "1";
+            openDetail(card, detailHost, id, meta);
+          });
+
+          root.appendChild(card);
+        }
+      }
+
+      main();
+    </script>
+  </body>
+</html>
