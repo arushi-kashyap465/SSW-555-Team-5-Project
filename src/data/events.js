@@ -1,16 +1,21 @@
+import { ObjectId } from 'mongodb';
 import { events as getEventsCollection } from "../config/mongoCollections.js";
 import { checkString } from "../helpers/validation.js";
 
-export async function createEvent(title, details) {
+export async function createEvent(title, details, teacherId) {
   const eventsCol = await getEventsCollection();
 
   title = checkString(title, "title");
   details = details === undefined || details === null ? "" : String(details).trim();
+  teacherId = checkId(teacherId, "Teacher ID");
 
   const now = new Date();
+  const qrCode = `event-${Date.now()}`;
   const newEvent = {
     title,
     details,
+    created_by: new ObjectId(teacherId),
+    qrCode,
     createdAt: now,
     updatedAt: now,
   };
@@ -37,6 +42,8 @@ export async function getAllEvents() {
     _id: e._id.toString(),
     title: e.title,
     details: e.details,
+    created_by: e.created_by?.toString(),
+    qrCode: e.qrCode,
     createdAt: e.createdAt,
     updatedAt: e.updatedAt,
   }));

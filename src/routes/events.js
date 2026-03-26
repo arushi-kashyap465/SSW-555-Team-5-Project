@@ -5,10 +5,10 @@ const router = express.Router();
 
 // POST /api/events
 router.post("/events", async (req, res) => {
-  const { title, details } = req.body || {};
+  const { title, details, teacherId } = req.body || {};
 
   try {
-    const event = await createEvent(title, details);
+    const event = await createEvent(title, details, teacherId);
     return res.status(201).json(event);
   } catch (err) {
     return res.status(400).json({ error: err.message || String(err) });
