@@ -214,6 +214,7 @@
           const payload = {
             title: "Test Event " + new Date().toLocaleString(),
             details: "Created from frontend/index.html",
+            teacherId: "PUT_A_REAL_USER_ID_HERE"
           };
 
           const res = await fetch(API_BASE + "/events", {
