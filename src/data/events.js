@@ -8,9 +8,11 @@ export async function createEvent(title, details) {
   details = details === undefined || details === null ? "" : String(details).trim();
 
   const now = new Date();
+  const qrCode = `event-${Date.now()}`;
   const newEvent = {
     title,
     details,
+    qrCode,
     createdAt: now,
     updatedAt: now,
   };
