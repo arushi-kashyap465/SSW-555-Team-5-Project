@@ -1,5 +1,0 @@
-Note to Self: We probably need to put this in the frontend
-
-Either that or delete the bloody frontend folder.
-
-I'll sort this out in my freetime
