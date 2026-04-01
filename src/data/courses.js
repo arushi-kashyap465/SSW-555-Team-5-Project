@@ -38,20 +38,6 @@ RecordObject {
 }
 */
 
-const createRecordObjectArray = (course_id) => {
-    const students = getStudentsInCourse(course_id);
-    // Creates an array of blank attendance records for each student in the course when a session is created
-    const recordObjectArray = students.map(student_id => ({
-        student_id: new ObjectId(student_id),
-        status: null,
-        check_in_time: null,
-        method: null
-    }));
-    return recordObjectArray;
-    // For status null => "-"
-
-}
-
 export const getCourseById = async (id) => {
     id = checkId(id, "Course ID");
     const coursesCollection = await courses();
