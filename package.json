@@ -7,7 +7,8 @@
   "scripts": {
     "start": "node src/app.js",
     "dev": "nodemon src/app.js",
-    "seed": "node seed/seed.js"
+    "seed": "node testing/seed/seed.js",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
   },
   "keywords": [],
   "author": "Arushi Kashyap, Owen Krupa, Nolan Hughes, Vinayak Ranjan",
@@ -23,6 +24,7 @@
     "qrcode": "^1.5.4"
   },
   "devDependencies": {
+    "jest": "^30.3.0",
     "nodemon": "^3.1.14"
   }
 }
