@@ -17,3 +17,6 @@ node_modules
 # local folders
 junk/
 trash/
+
+# Important
+service-account.json

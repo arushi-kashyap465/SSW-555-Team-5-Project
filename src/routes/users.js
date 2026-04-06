@@ -1,6 +1,7 @@
 import express from "express";
 import {
   registerUser,
+  loginUser,
   getUserById,
   getAllUsers,
   deleteUser,
@@ -14,6 +15,17 @@ router.post("/users/register", async (req, res) => {
   try {
     const user = await registerUser(name, email, password, role);
     return res.status(201).json(user);
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
+});
+
+router.post("/users/login", async (req, res) => {
+  const { email, password } = req.body;
+
+  try {
+    const user = await loginUser(email, password);
+    return res.json(user);
   } catch (err) {
     return res.status(400).json({ error: err.message });
   }
