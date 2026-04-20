@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>QR Attendance — Check in</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main>
+      <div class="card" style="max-width: 520px; margin: 3rem auto;">
+        <h2>Check in</h2>
+        <div id="status" class="message">Validating…</div>
+        <div id="details" style="margin-top: 1rem;"></div>
+        <a id="back" href="/dashboard.html" style="display: none; margin-top: 1rem;">
+          Back to dashboard
+        </a>
+      </div>
+    </main>
+
+    <script type="module">
+      import { apiFetch, auth } from "/js/api.js";
+
+      const params = new URLSearchParams(location.search);
+      const sessionId = params.get("sessionId");
+      const token = params.get("token");
+
+      const statusEl = document.getElementById("status");
+      const detailsEl = document.getElementById("details");
+      const backEl = document.getElementById("back");
+
+      if (!sessionId || !token) {
+        statusEl.textContent = "Missing sessionId or token in the URL.";
+        statusEl.classList.add("error");
+      } else if (!auth.token || !auth.user) {
+        // Bounce to login, then come back with the same URL.
+        const next = encodeURIComponent(location.pathname + location.search);
+        location.href = `/index.html?next=${next}`;
+      } else if (auth.user.role !== "student") {
+        statusEl.textContent = "Only student accounts can check in.";
+        statusEl.classList.add("error");
+        backEl.style.display = "";
+      } else {
+        checkIn();
+      }
+
+      async function checkIn() {
+        try {
+          const resp = await apiFetch(`/scan/${sessionId}`, {
+            method: "POST",
+            body: { token }
+          });
+          statusEl.textContent = resp.duplicate
+            ? "You were already checked in for this session."
+            : "You're checked in!";
+          statusEl.classList.add("success");
+          detailsEl.innerHTML =
+            `<div><strong>Session:</strong> ${escapeHtml(resp.session.title || "")}</div>
+             <div><strong>Status:</strong> <span class="badge ${resp.record.status}">${resp.record.status}</span></div>
+             <div><strong>Time:</strong> ${formatTs(resp.record.check_in_time)}</div>`;
+          backEl.style.display = "";
+        } catch (err) {
+          statusEl.textContent = err.message;
+          statusEl.classList.add("error");
+          backEl.style.display = "";
+        }
+      }
+
+      function escapeHtml(s) {
+        return String(s ?? "").replace(/[&<>"']/g, (c) =>
+          ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])
+        );
+      }
+      function formatTs(v) {
+        if (!v) return "-";
+        if (typeof v === "object" && "_seconds" in v) {
+          return new Date(v._seconds * 1000).toLocaleString();
+        }
+        try { return new Date(v).toLocaleString(); } catch { return String(v); }
+      }
+    </script>
+  </body>
+</html>

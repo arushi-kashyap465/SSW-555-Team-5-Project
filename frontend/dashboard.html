@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>QR Attendance — Dashboard</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header>
+      <h1>QR Attendance</h1>
+      <nav>
+        <span id="who" style="color: var(--muted); font-size: 0.9rem;"></span>
+        <button id="logout-btn" type="button">Log out</button>
+      </nav>
+    </header>
+
+    <main>
+      <!-- INSTRUCTOR VIEW -->
+      <section id="instructor-view" style="display: none">
+        <div class="grid-2">
+          <div class="card">
+            <h2>Create a course</h2>
+            <form id="course-form">
+              <label for="c-name">Course name</label>
+              <input id="c-name" type="text" required />
+              <label for="c-desc">Description</label>
+              <textarea id="c-desc" rows="2" required></textarea>
+              <button type="submit" class="primary">Create course</button>
+              <div id="c-message" class="message"></div>
+            </form>
+          </div>
+
+          <div class="card">
+            <h2>Create a session</h2>
+            <form id="session-form">
+              <label for="s-course">Course</label>
+              <select id="s-course" required></select>
+              <label for="s-title">Session title</label>
+              <input id="s-title" type="text" placeholder="Lecture 3" required />
+              <label for="s-start">Starts at</label>
+              <input id="s-start" type="datetime-local" required />
+              <label for="s-end">Ends at</label>
+              <input id="s-end" type="datetime-local" required />
+              <button type="submit" class="primary">Generate session + QR</button>
+              <div id="s-message" class="message"></div>
+            </form>
+          </div>
+        </div>
+
+        <div class="card" id="qr-card" style="display: none">
+          <h2>Scan this QR to check in</h2>
+          <div class="qr-wrap">
+            <img id="qr-img" alt="Session QR code" />
+            <code id="qr-link"></code>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>My courses</h2>
+          <div id="courses-list"></div>
+        </div>
+
+        <div class="card">
+          <h2>Attendance viewer</h2>
+          <label for="a-session">Session</label>
+          <select id="a-session"></select>
+          <button id="a-load" class="primary" type="button">View attendance</button>
+          <div id="a-summary" style="margin-top: 1rem;"></div>
+          <div id="a-table"></div>
+        </div>
+      </section>
+
+      <!-- STUDENT VIEW -->
+      <section id="student-view" style="display: none">
+        <div class="card">
+          <h2>Welcome, <span id="stu-name"></span>!</h2>
+          <p>
+            Scan a QR code your instructor shows to record your attendance.
+            You can also join a course using a course ID below.
+          </p>
+        </div>
+
+        <div class="card">
+          <h2>Join a course</h2>
+          <form id="join-form">
+            <label for="j-id">Course ID</label>
+            <input id="j-id" type="text" required />
+            <button type="submit" class="primary">Join</button>
+            <div id="j-message" class="message"></div>
+          </form>
+        </div>
+
+        <div class="card">
+          <h2>My courses</h2>
+          <div id="stu-courses-list"></div>
+        </div>
+      </section>
+    </main>
+
+    <script type="module">
+      import { apiFetch, auth, requireAuth, logout } from "/js/api.js";
+
+      const user = requireAuth();
+      if (!user) throw new Error("redirecting");
+
+      document.getElementById("who").textContent =
+        `${user.name} · ${user.role}`;
+      document.getElementById("logout-btn").addEventListener("click", logout);
+
+      if (user.role === "instructor") renderInstructor();
+      else renderStudent();
+
+      // ----------- INSTRUCTOR -----------
+      async function renderInstructor() {
+        document.getElementById("instructor-view").style.display = "";
+        await refreshCourses();
+        await refreshSessionOptions();
+
+        document.getElementById("course-form").addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const msg = document.getElementById("c-message");
+          msg.textContent = ""; msg.className = "message";
+          try {
+            await apiFetch("/courses", {
+              method: "POST",
+              body: {
+                course_name: document.getElementById("c-name").value.trim(),
+                description: document.getElementById("c-desc").value.trim(),
+                students: []
+              }
+            });
+            msg.textContent = "Course created."; msg.classList.add("success");
+            document.getElementById("course-form").reset();
+            await refreshCourses();
+          } catch (err) {
+            msg.textContent = err.message; msg.classList.add("error");
+          }
+        });
+
+        document.getElementById("session-form").addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const msg = document.getElementById("s-message");
+          msg.textContent = ""; msg.className = "message";
+          try {
+            const hostingUrl = `${location.protocol}//${location.host}`;
+            const session = await apiFetch("/sessions", {
+              method: "POST",
+              body: {
+                course_id: document.getElementById("s-course").value,
+                title: document.getElementById("s-title").value.trim(),
+                starts_at: document.getElementById("s-start").value,
+                ends_at: document.getElementById("s-end").value,
+                hostingUrl
+              }
+            });
+            msg.textContent = `Session "${session.title}" created.`;
+            msg.classList.add("success");
+            showQR(session);
+            await refreshSessionOptions();
+          } catch (err) {
+            msg.textContent = err.message; msg.classList.add("error");
+          }
+        });
+
+        document.getElementById("a-load").addEventListener("click", loadAttendance);
+      }
+
+      async function refreshCourses() {
+        const courses = await apiFetch("/courses");
+        const sel = document.getElementById("s-course");
+        sel.innerHTML = "";
+        const list = document.getElementById("courses-list");
+        list.innerHTML = "";
+        if (!courses.length) {
+          list.innerHTML = '<div class="list-empty">No courses yet — create one above.</div>';
+        } else {
+          const table = document.createElement("table");
+          table.innerHTML =
+            "<thead><tr><th>Name</th><th>Course ID (share with students)</th><th>Students</th></tr></thead>";
+          const tbody = document.createElement("tbody");
+          courses.forEach((c) => {
+            const tr = document.createElement("tr");
+            tr.innerHTML = `<td>${escapeHtml(c.course_name)}<br><small>${escapeHtml(
+              c.description || ""
+            )}</small></td><td><code>${c._id}</code></td><td>${(c.students || []).length}</td>`;
+            tbody.appendChild(tr);
+            const opt = document.createElement("option");
+            opt.value = c._id; opt.textContent = c.course_name;
+            sel.appendChild(opt);
+          });
+          table.appendChild(tbody);
+          list.appendChild(table);
+        }
+      }
+
+      async function refreshSessionOptions() {
+        try {
+          const sessions = await apiFetch("/sessions");
+          const sel = document.getElementById("a-session");
+          sel.innerHTML = "";
+          sessions.forEach((s) => {
+            const opt = document.createElement("option");
+            opt.value = s._id;
+            opt.textContent = `${s.title} — ${new Date(s.createdAt?._seconds ? s.createdAt._seconds * 1000 : s.createdAt || Date.now()).toLocaleString()}`;
+            sel.appendChild(opt);
+          });
+        } catch (_) {}
+      }
+
+      function showQR(session) {
+        const card = document.getElementById("qr-card");
+        card.style.display = "";
+        document.getElementById("qr-img").src = session.qrDataUrl;
+        document.getElementById("qr-link").textContent = session.qrUrl;
+      }
+
+      async function loadAttendance() {
+        const id = document.getElementById("a-session").value;
+        if (!id) return;
+        const summaryEl = document.getElementById("a-summary");
+        const tableEl = document.getElementById("a-table");
+        summaryEl.textContent = "Loading...";
+        tableEl.innerHTML = "";
+        try {
+          const report = await apiFetch(`/sessions/${id}/attendance`);
+          summaryEl.innerHTML =
+            `<strong>Present:</strong> ${report.summary.present} &nbsp; ` +
+            `<strong>Late:</strong> ${report.summary.late} &nbsp; ` +
+            `<strong>Absent:</strong> ${report.summary.absent} &nbsp; ` +
+            `<strong>Total:</strong> ${report.summary.total}`;
+          if (!report.roster.length) {
+            tableEl.innerHTML =
+              '<div class="list-empty">No students enrolled in this course.</div>';
+            return;
+          }
+          const rows = report.roster
+            .map(
+              (r) => `<tr>
+                <td>${escapeHtml(r.name)}</td>
+                <td>${escapeHtml(r.email || "")}</td>
+                <td><span class="badge ${r.status}">${r.status}</span></td>
+                <td>${r.check_in_time ? formatTs(r.check_in_time) : "-"}</td>
+              </tr>`
+            )
+            .join("");
+          tableEl.innerHTML = `<table>
+              <thead><tr><th>Student</th><th>Email</th><th>Status</th><th>Checked in</th></tr></thead>
+              <tbody>${rows}</tbody>
+            </table>`;
+        } catch (err) {
+          summaryEl.textContent = err.message;
+        }
+      }
+
+      // ----------- STUDENT -----------
+      async function renderStudent() {
+        document.getElementById("student-view").style.display = "";
+        document.getElementById("stu-name").textContent = user.name;
+
+        const list = document.getElementById("stu-courses-list");
+        async function refresh() {
+          list.innerHTML = "Loading...";
+          try {
+            const courses = await apiFetch("/courses");
+            if (!courses.length) {
+              list.innerHTML =
+                '<div class="list-empty">You aren\'t enrolled in any courses yet.</div>';
+              return;
+            }
+            list.innerHTML = courses
+              .map(
+                (c) =>
+                  `<div style="padding:0.4rem 0;border-bottom:1px solid var(--border);">
+                     <strong>${escapeHtml(c.course_name)}</strong>
+                     <span style="color:var(--muted);font-size:0.85rem;"> — ${escapeHtml(c.description || "")}</span>
+                   </div>`
+              )
+              .join("");
+          } catch (err) {
+            list.innerHTML = `<span class="message error">${err.message}</span>`;
+          }
+        }
+        await refresh();
+
+        document.getElementById("join-form").addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const msg = document.getElementById("j-message");
+          msg.textContent = ""; msg.className = "message";
+          const id = document.getElementById("j-id").value.trim();
+          try {
+            await apiFetch(`/courses/${id}/join`, { method: "POST" });
+            msg.textContent = "Joined course."; msg.classList.add("success");
+            document.getElementById("j-id").value = "";
+            await refresh();
+          } catch (err) {
+            msg.textContent = err.message; msg.classList.add("error");
+          }
+        });
+      }
+
+      // ----------- utils -----------
+      function escapeHtml(s) {
+        return String(s ?? "").replace(/[&<>"']/g, (c) =>
+          ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])
+        );
+      }
+      function formatTs(v) {
+        if (!v) return "-";
+        if (typeof v === "object" && "_seconds" in v) {
+          return new Date(v._seconds * 1000).toLocaleString();
+        }
+        try { return new Date(v).toLocaleString(); } catch { return String(v); }
+      }
+    </script>
+  </body>
+</html>
