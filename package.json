@@ -4,6 +4,7 @@
   "description": "QR-based attendance tracking web app (Firebase Hosting + Functions + Firestore)",
   "private": true,
   "scripts": {
+    "postinstall": "npm --prefix backend install",
     "start": "npm --prefix backend start",
     "dev": "npm --prefix backend run dev",
     "serve": "firebase emulators:start --only functions,hosting,firestore",
@@ -11,8 +12,5 @@
     "test": "npm --prefix backend test"
   },
   "author": "Arushi Kashyap, Owen Krupa, Nolan Hughes, Vinayak Ranjan",
-  "license": "ISC",
-  "devDependencies": {
-    "firebase-tools": "^13.35.1"
-  }
+  "license": "ISC"
 }

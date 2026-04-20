@@ -34,9 +34,10 @@
     "cleanUrls": true
   },
   "emulators": {
-    "functions": { "port": 5001 },
-    "firestore": { "port": 8080 },
-    "hosting":   { "port": 5000 },
-    "ui":        { "enabled": true }
+    "functions": { "host": "127.0.0.1", "port": 5001 },
+    "firestore": { "host": "127.0.0.1", "port": 8085 },
+    "hosting":   { "host": "127.0.0.1", "port": 5002 },
+    "ui":        { "enabled": true, "host": "127.0.0.1", "port": 4001 },
+    "singleProjectMode": true
   }
 }
