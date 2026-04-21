@@ -63,18 +63,25 @@ input, select, textarea {
   background: #fff;
 }
 
-button.primary {
-  background: var(--accent);
+button.primary,
+button.secondary,
+button.danger {
   color: #fff;
   border: none;
   padding: 0.55rem 1rem;
   border-radius: 4px;
   cursor: pointer;
-  margin-top: 1rem;
   font-size: 0.95rem;
 }
+button.primary  { background: var(--accent); margin-top: 1rem; }
 button.primary:hover { background: var(--accent-dark); }
 button.primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+button.secondary { background: #5f6672; }
+button.secondary:hover { background: #444a54; }
+
+button.danger { background: var(--danger); }
+button.danger:hover { background: #8e2a20; }
 
 .tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
 .tabs button {

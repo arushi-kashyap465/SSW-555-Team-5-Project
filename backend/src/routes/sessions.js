@@ -4,6 +4,7 @@ import {
   createSession,
   getSessionById,
   getAllSessions,
+  getSessionsByInstructor,
   getSessionQRImage,
   setSessionActive
 } from "../data/sessions.js";
@@ -15,7 +16,8 @@ const router = Router();
 // Teacher creates a session and immediately receives QR url + QR image data.
 router.post("/", loginRequired, requireRole("instructor"), async (req, res) => {
   try {
-    const { course_id, title, starts_at, ends_at } = req.body || {};
+    const { course_id, title, starts_at, ends_at, late_grace_minutes } =
+      req.body || {};
     const hostingUrl =
       req.body?.hostingUrl ||
       process.env.HOSTING_URL ||
@@ -26,7 +28,8 @@ router.post("/", loginRequired, requireRole("instructor"), async (req, res) => {
       title,
       starts_at,
       ends_at,
-      hostingUrl
+      hostingUrl,
+      late_grace_minutes
     );
     res.status(201).json(session);
   } catch (e) {
@@ -34,13 +37,30 @@ router.post("/", loginRequired, requireRole("instructor"), async (req, res) => {
   }
 });
 
-router.get("/", loginRequired, requireRole("instructor"), async (_req, res) => {
+// Only the logged-in instructor's own sessions — each teacher should only
+// see their own attendance data in the viewer.
+router.get("/", loginRequired, requireRole("instructor"), async (req, res) => {
   try {
-    res.json(await getAllSessions());
+    res.json(await getSessionsByInstructor(req.user._id));
   } catch (e) {
     res.status(500).json({ error: e.message || String(e) });
   }
 });
+
+// Admin-style full list if ever needed; left behind `/all` so the default
+// scoped endpoint stays safe.
+router.get(
+  "/all",
+  loginRequired,
+  requireRole("instructor"),
+  async (_req, res) => {
+    try {
+      res.json(await getAllSessions());
+    } catch (e) {
+      res.status(500).json({ error: e.message || String(e) });
+    }
+  }
+);
 
 router.get("/:id", loginRequired, async (req, res) => {
   try {

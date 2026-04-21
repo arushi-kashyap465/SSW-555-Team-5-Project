@@ -22,6 +22,12 @@ import { getSessionById } from "./sessions.js";
 import { getCourseById, getStudentsInCourse } from "./courses.js";
 import { getUserById } from "./users.js";
 
+// A student is counted "present" if they check in at or before
+// (starts_at + grace). After that they're "late". Grace is per-session
+// (set by the instructor when creating the session); this is the fallback
+// for any legacy sessions that were created before the field existed.
+const DEFAULT_LATE_GRACE_MINUTES = 10;
+
 const serialize = (id, data) => ({
   _id: id,
   session_id: data.session_id,
@@ -64,11 +70,19 @@ export const recordAttendance = async (session_id, student_id, method = "qr") =>
   }
 
   const now = new Date();
-  // Compute late vs present if we can parse ends_at.
+  // "present" if they check in at or before (starts_at + grace), otherwise
+  // "late". Grace comes from the session doc (instructor-chosen); if missing
+  // or non-numeric we fall back to the default so legacy docs still work.
   let status = "present";
   try {
-    const endsAt = new Date(session.ends_at);
-    if (!isNaN(endsAt.getTime()) && now > endsAt) status = "late";
+    const startsAt = new Date(session.starts_at);
+    if (!isNaN(startsAt.getTime())) {
+      const grace = Number.isFinite(session.late_grace_minutes)
+        ? session.late_grace_minutes
+        : DEFAULT_LATE_GRACE_MINUTES;
+      const graceEnd = new Date(startsAt.getTime() + grace * 60_000);
+      if (now > graceEnd) status = "late";
+    }
   } catch (_) {}
 
   const docRef = await attendanceCol.add({

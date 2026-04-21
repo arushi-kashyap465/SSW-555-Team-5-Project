@@ -42,6 +42,18 @@
               <input id="s-start" type="datetime-local" required />
               <label for="s-end">Ends at</label>
               <input id="s-end" type="datetime-local" required />
+              <label for="s-grace">
+                Late grace period (minutes after start)
+              </label>
+              <input
+                id="s-grace"
+                type="number"
+                min="0"
+                max="180"
+                step="1"
+                value="10"
+                required
+              />
               <button type="submit" class="primary">Generate session + QR</button>
               <div id="s-message" class="message"></div>
             </form>
@@ -65,7 +77,12 @@
           <h2>Attendance viewer</h2>
           <label for="a-session">Session</label>
           <select id="a-session"></select>
-          <button id="a-load" class="primary" type="button">View attendance</button>
+          <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 0.5rem;">
+            <button id="a-load" class="primary" type="button">View attendance</button>
+            <button id="a-qr" class="secondary" type="button">Show QR</button>
+            <button id="a-end" class="danger" type="button">End session</button>
+          </div>
+          <div id="a-message" class="message"></div>
           <div id="a-summary" style="margin-top: 1rem;"></div>
           <div id="a-table"></div>
         </div>
@@ -112,6 +129,13 @@
       else renderStudent();
 
       // ----------- INSTRUCTOR -----------
+      // Shared course cache so the attendance viewer can label each session
+      // with its course name without a second round trip per option.
+      let coursesCache = [];
+      const courseNameById = (id) =>
+        (coursesCache.find((c) => c._id === id) || {}).course_name ||
+        "(unknown course)";
+
       async function renderInstructor() {
         document.getElementById("instructor-view").style.display = "";
         await refreshCourses();
@@ -144,6 +168,7 @@
           msg.textContent = ""; msg.className = "message";
           try {
             const hostingUrl = `${location.protocol}//${location.host}`;
+            const graceRaw = document.getElementById("s-grace").value;
             const session = await apiFetch("/sessions", {
               method: "POST",
               body: {
@@ -151,6 +176,8 @@
                 title: document.getElementById("s-title").value.trim(),
                 starts_at: document.getElementById("s-start").value,
                 ends_at: document.getElementById("s-end").value,
+                late_grace_minutes:
+                  graceRaw === "" ? undefined : Number(graceRaw),
                 hostingUrl
               }
             });
@@ -164,10 +191,13 @@
         });
 
         document.getElementById("a-load").addEventListener("click", loadAttendance);
+        document.getElementById("a-qr").addEventListener("click", reopenQR);
+        document.getElementById("a-end").addEventListener("click", endSession);
       }
 
       async function refreshCourses() {
         const courses = await apiFetch("/courses");
+        coursesCache = courses;
         const sel = document.getElementById("s-course");
         sel.innerHTML = "";
         const list = document.getElementById("courses-list");
@@ -199,10 +229,20 @@
           const sessions = await apiFetch("/sessions");
           const sel = document.getElementById("a-session");
           sel.innerHTML = "";
+          if (!sessions.length) {
+            const opt = document.createElement("option");
+            opt.value = ""; opt.textContent = "— no sessions yet —";
+            opt.disabled = true;
+            sel.appendChild(opt);
+            return;
+          }
           sessions.forEach((s) => {
             const opt = document.createElement("option");
             opt.value = s._id;
-            opt.textContent = `${s.title} — ${new Date(s.createdAt?._seconds ? s.createdAt._seconds * 1000 : s.createdAt || Date.now()).toLocaleString()}`;
+            const courseName = courseNameById(s.course_id);
+            const when = formatTs(s.createdAt);
+            const badge = s.active ? "" : " · [closed]";
+            opt.textContent = `${courseName} · ${s.title} — ${when}${badge}`;
             sel.appendChild(opt);
           });
         } catch (_) {}
@@ -211,8 +251,59 @@
       function showQR(session) {
         const card = document.getElementById("qr-card");
         card.style.display = "";
-        document.getElementById("qr-img").src = session.qrDataUrl;
+        // Regenerated tokens use `dataUrl`, brand-new sessions use `qrDataUrl`.
+        document.getElementById("qr-img").src =
+          session.qrDataUrl || session.dataUrl;
         document.getElementById("qr-link").textContent = session.qrUrl;
+        card.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+
+      // Re-renders the QR for whichever session is currently selected in the
+      // attendance viewer — the token itself lives in Firestore, so refresh
+      // and even a fresh browser session can always pull it back up.
+      async function reopenQR() {
+        const id = document.getElementById("a-session").value;
+        const msg = document.getElementById("a-message");
+        msg.textContent = ""; msg.className = "message";
+        if (!id) {
+          msg.textContent = "Pick a session first.";
+          msg.classList.add("error");
+          return;
+        }
+        try {
+          const { session, dataUrl } = await apiFetch(`/sessions/${id}/qr`);
+          showQR({ ...session, dataUrl });
+          if (!session.active) {
+            msg.textContent =
+              "This session is closed — students will see an error if they scan.";
+            msg.classList.add("error");
+          }
+        } catch (err) {
+          msg.textContent = err.message;
+          msg.classList.add("error");
+        }
+      }
+
+      async function endSession() {
+        const id = document.getElementById("a-session").value;
+        const msg = document.getElementById("a-message");
+        msg.textContent = ""; msg.className = "message";
+        if (!id) {
+          msg.textContent = "Pick a session first.";
+          msg.classList.add("error");
+          return;
+        }
+        if (!confirm("End this session? Scans will be rejected after this.")) return;
+        try {
+          await apiFetch(`/sessions/${id}/active`, {
+            method: "PATCH",
+            body: { active: false }
+          });
+          msg.textContent = "Session ended."; msg.classList.add("success");
+          await refreshSessionOptions();
+        } catch (err) {
+          msg.textContent = err.message; msg.classList.add("error");
+        }
       }
 
       async function loadAttendance() {
@@ -224,7 +315,27 @@
         tableEl.innerHTML = "";
         try {
           const report = await apiFetch(`/sessions/${id}/attendance`);
+          const s = report.session || {};
+          const courseName = courseNameById(s.course_id);
+          const startTxt = formatSessionTs(s.starts_at);
+          const endTxt = formatSessionTs(s.ends_at);
+          const grace = Number.isFinite(s.late_grace_minutes)
+            ? s.late_grace_minutes
+            : 10;
+          const activeTxt = s.active
+            ? '<span class="badge present">open</span>'
+            : '<span class="badge absent">closed</span>';
           summaryEl.innerHTML =
+            `<div style="margin-bottom:0.75rem;padding:0.6rem 0.75rem;` +
+              `background:#fafbfd;border:1px solid var(--border);border-radius:4px;">` +
+              `<div><strong>${escapeHtml(courseName)}</strong> — ` +
+                `${escapeHtml(s.title || "")} ${activeTxt}</div>` +
+              `<div style="color:var(--muted);font-size:0.85rem;margin-top:0.25rem;">` +
+                `Starts: ${escapeHtml(startTxt)} &nbsp;·&nbsp; ` +
+                `Ends: ${escapeHtml(endTxt)} &nbsp;·&nbsp; ` +
+                `Late after: ${grace} min` +
+              `</div>` +
+            `</div>` +
             `<strong>Present:</strong> ${report.summary.present} &nbsp; ` +
             `<strong>Late:</strong> ${report.summary.late} &nbsp; ` +
             `<strong>Absent:</strong> ${report.summary.absent} &nbsp; ` +
@@ -311,6 +422,26 @@
           return new Date(v._seconds * 1000).toLocaleString();
         }
         try { return new Date(v).toLocaleString(); } catch { return String(v); }
+      }
+      // Full, human-readable date + time for the session metadata header
+      // (e.g. "Tue, Apr 21, 2026, 2:30 PM").
+      function formatSessionTs(v) {
+        if (!v) return "—";
+        let d;
+        if (typeof v === "object" && "_seconds" in v) {
+          d = new Date(v._seconds * 1000);
+        } else {
+          d = new Date(v);
+        }
+        if (isNaN(d.getTime())) return String(v);
+        return d.toLocaleString(undefined, {
+          weekday: "short",
+          year: "numeric",
+          month: "short",
+          day: "numeric",
+          hour: "numeric",
+          minute: "2-digit"
+        });
       }
     </script>
   </body>
