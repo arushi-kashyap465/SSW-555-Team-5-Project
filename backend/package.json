@@ -1,0 +1,33 @@
+{
+  "name": "ssw-555-team-5-backend",
+  "version": "1.0.0",
+  "description": "QR attendance backend (Express on Firebase Cloud Functions)",
+  "main": "index.js",
+  "type": "module",
+  "engines": {
+    "node": "22"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "serve": "firebase emulators:start --only functions,hosting,firestore",
+    "deploy": "firebase deploy --only functions,hosting,firestore:rules",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
+  },
+  "author": "Arushi Kashyap, Owen Krupa, Nolan Hughes, Vinayak Ranjan",
+  "license": "ISC",
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.6",
+    "dotenv": "^17.3.1",
+    "express": "^4.19.2",
+    "firebase-admin": "^13.7.0",
+    "firebase-functions": "^6.5.0",
+    "jsonwebtoken": "^9.0.2",
+    "qrcode": "^1.5.4"
+  },
+  "devDependencies": {
+    "jest": "^30.3.0",
+    "nodemon": "^3.1.14"
+  }
+}

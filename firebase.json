@@ -5,21 +5,39 @@
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
   },
+  "functions": [
+    {
+      "source": "backend",
+      "codebase": "default",
+      "runtime": "nodejs22",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "src/testing/**"
+      ]
+    }
+  ],
   "hosting": {
-    "public": "public",
+    "public": "frontend",
     "ignore": [
       "firebase.json",
       "**/.*",
       "**/node_modules/**"
-    ]
+    ],
+    "rewrites": [
+      { "source": "/api/**", "function": "api" },
+      { "source": "/scan", "destination": "/scan.html" },
+      { "source": "/dashboard", "destination": "/dashboard.html" }
+    ],
+    "cleanUrls": true
   },
-  "auth": {
-    "providers": {
-      "emailPassword": true,
-      "googleSignIn": {
-        "oAuthBrandDisplayName": "QR Attendance App",
-        "supportEmail": "support@undefined.firebaseapp.com"
-      }
-    }
+  "emulators": {
+    "functions": { "host": "127.0.0.1", "port": 5001 },
+    "firestore": { "host": "127.0.0.1", "port": 8085 },
+    "hosting":   { "host": "127.0.0.1", "port": 5002 },
+    "ui":        { "enabled": true, "host": "127.0.0.1", "port": 4001 },
+    "singleProjectMode": true
   }
 }
