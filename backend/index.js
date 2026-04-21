@@ -8,6 +8,14 @@ import { buildApp } from "./src/app.js";
 const app = buildApp();
 
 export const api = onRequest(
-  { region: "us-central1", memory: "512MiB", timeoutSeconds: 60 },
+  {
+    region: "us-central1",
+    memory: "512MiB",
+    timeoutSeconds: 60,
+    // Required since Google's 2024 policy change — 2nd-gen functions are
+    // private by default. Hosting rewrites need to reach this anonymously.
+    invoker: "public",
+    cors: true
+  },
   app
 );
