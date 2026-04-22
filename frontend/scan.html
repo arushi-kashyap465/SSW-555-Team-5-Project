@@ -10,9 +10,54 @@
     <main>
       <div class="card" style="max-width: 520px; margin: 3rem auto;">
         <h2>Check in</h2>
+
+        <!-- Status line (always visible). -->
         <div id="status" class="message">Validating…</div>
+
+        <!-- Successful-scan details. -->
         <div id="details" style="margin-top: 1rem;"></div>
-        <a id="back" href="/dashboard.html" style="display: none; margin-top: 1rem;">
+
+        <!-- Inline auth. Shown only if the student isn't logged in yet.
+             We deliberately do NOT redirect to /index.html here — mobile
+             Safari treats the redirect + cleanUrls 301 chain as a loop and
+             bails out with "too many redirects." -->
+        <div id="auth-panel" style="display: none; margin-top: 1rem;">
+          <div class="tabs" role="tablist">
+            <button id="tab-login" class="active" type="button">Login</button>
+            <button id="tab-register" type="button">Register</button>
+          </div>
+
+          <form id="login-form">
+            <label for="login-email">Email</label>
+            <input id="login-email" type="email" autocomplete="email" required />
+            <label for="login-password">Password</label>
+            <input
+              id="login-password"
+              type="password"
+              autocomplete="current-password"
+              required
+            />
+            <button type="submit" class="primary">Login &amp; check in</button>
+            <div id="login-message" class="message"></div>
+          </form>
+
+          <form id="register-form" style="display: none">
+            <label for="reg-name">Name</label>
+            <input id="reg-name" type="text" required />
+            <label for="reg-email">Email</label>
+            <input id="reg-email" type="email" required />
+            <label for="reg-password">Password (6+ chars)</label>
+            <input id="reg-password" type="password" required />
+            <!-- Role is fixed to student on this page — only students scan. -->
+            <input type="hidden" id="reg-role" value="student" />
+            <button type="submit" class="primary">
+              Create account &amp; check in
+            </button>
+            <div id="reg-message" class="message"></div>
+          </form>
+        </div>
+
+        <a id="back" href="/dashboard" style="display: none; margin-top: 1rem;">
           Back to dashboard
         </a>
       </div>
@@ -28,20 +73,107 @@
       const statusEl = document.getElementById("status");
       const detailsEl = document.getElementById("details");
       const backEl = document.getElementById("back");
+      const authPanel = document.getElementById("auth-panel");
 
       if (!sessionId || !token) {
         statusEl.textContent = "Missing sessionId or token in the URL.";
-        statusEl.classList.add("error");
-      } else if (!auth.token || !auth.user) {
-        // Bounce to login, then come back with the same URL.
-        const next = encodeURIComponent(location.pathname + location.search);
-        location.href = `/index.html?next=${next}`;
-      } else if (auth.user.role !== "student") {
-        statusEl.textContent = "Only student accounts can check in.";
-        statusEl.classList.add("error");
-        backEl.style.display = "";
+        statusEl.className = "message error";
       } else {
-        checkIn();
+        start();
+      }
+
+      async function start() {
+        if (auth.token && auth.user) {
+          if (auth.user.role !== "student") {
+            statusEl.textContent = "Only student accounts can check in.";
+            statusEl.className = "message error";
+            backEl.style.display = "";
+            return;
+          }
+          await checkIn();
+          return;
+        }
+        // No saved auth → show inline login/register instead of redirecting.
+        statusEl.textContent = "Please log in to complete check-in.";
+        statusEl.className = "message";
+        authPanel.style.display = "";
+        wireAuthForms();
+      }
+
+      function wireAuthForms() {
+        const tabLogin = document.getElementById("tab-login");
+        const tabRegister = document.getElementById("tab-register");
+        const loginForm = document.getElementById("login-form");
+        const registerForm = document.getElementById("register-form");
+
+        tabLogin.addEventListener("click", () => {
+          tabLogin.classList.add("active");
+          tabRegister.classList.remove("active");
+          loginForm.style.display = "";
+          registerForm.style.display = "none";
+        });
+        tabRegister.addEventListener("click", () => {
+          tabRegister.classList.add("active");
+          tabLogin.classList.remove("active");
+          registerForm.style.display = "";
+          loginForm.style.display = "none";
+        });
+
+        loginForm.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const msg = document.getElementById("login-message");
+          msg.textContent = "";
+          msg.className = "message";
+          try {
+            const data = await apiFetch("/users/login", {
+              method: "POST",
+              authed: false,
+              body: {
+                email: document.getElementById("login-email").value.trim(),
+                password: document.getElementById("login-password").value
+              }
+            });
+            auth.save(data.token, data.user);
+            if (data.user.role !== "student") {
+              msg.textContent =
+                "That account is a " + data.user.role + " — only students can check in.";
+              msg.classList.add("error");
+              return;
+            }
+            authPanel.style.display = "none";
+            statusEl.textContent = "Logged in. Checking you in…";
+            await checkIn();
+          } catch (err) {
+            msg.textContent = err.message;
+            msg.classList.add("error");
+          }
+        });
+
+        registerForm.addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const msg = document.getElementById("reg-message");
+          msg.textContent = "";
+          msg.className = "message";
+          try {
+            const data = await apiFetch("/users/register", {
+              method: "POST",
+              authed: false,
+              body: {
+                name: document.getElementById("reg-name").value.trim(),
+                email: document.getElementById("reg-email").value.trim(),
+                password: document.getElementById("reg-password").value,
+                role: "student"
+              }
+            });
+            auth.save(data.token, data.user);
+            authPanel.style.display = "none";
+            statusEl.textContent = "Account created. Checking you in…";
+            await checkIn();
+          } catch (err) {
+            msg.textContent = err.message;
+            msg.classList.add("error");
+          }
+        });
       }
 
       async function checkIn() {
@@ -53,22 +185,38 @@
           statusEl.textContent = resp.duplicate
             ? "You were already checked in for this session."
             : "You're checked in!";
-          statusEl.classList.add("success");
+          statusEl.className = resp.duplicate
+            ? "message"
+            : "message success";
           detailsEl.innerHTML =
-            `<div><strong>Session:</strong> ${escapeHtml(resp.session.title || "")}</div>
-             <div><strong>Status:</strong> <span class="badge ${resp.record.status}">${resp.record.status}</span></div>
-             <div><strong>Time:</strong> ${formatTs(resp.record.check_in_time)}</div>`;
+            `<div><strong>Session:</strong> ${escapeHtml(
+              resp.session.title || ""
+            )}</div>
+             <div><strong>Status:</strong> <span class="badge ${
+               resp.record.status
+             }">${resp.record.status}</span></div>
+             <div><strong>Time:</strong> ${formatTs(
+               resp.record.check_in_time
+             )}</div>`;
           backEl.style.display = "";
         } catch (err) {
           statusEl.textContent = err.message;
-          statusEl.classList.add("error");
+          statusEl.className = "message error";
           backEl.style.display = "";
         }
       }
 
       function escapeHtml(s) {
-        return String(s ?? "").replace(/[&<>"']/g, (c) =>
-          ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])
+        return String(s ?? "").replace(
+          /[&<>"']/g,
+          (c) =>
+            ({
+              "&": "&amp;",
+              "<": "&lt;",
+              ">": "&gt;",
+              '"': "&quot;",
+              "'": "&#39;"
+            }[c])
         );
       }
       function formatTs(v) {
@@ -76,7 +224,11 @@
         if (typeof v === "object" && "_seconds" in v) {
           return new Date(v._seconds * 1000).toLocaleString();
         }
-        try { return new Date(v).toLocaleString(); } catch { return String(v); }
+        try {
+          return new Date(v).toLocaleString();
+        } catch {
+          return String(v);
+        }
       }
     </script>
   </body>

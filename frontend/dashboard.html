@@ -8,7 +8,7 @@
   </head>
   <body>
     <header>
-      <h1>QR Attendance</h1>
+      <h1>QR Attendance - V1.1</h1>
       <nav>
         <span id="who" style="color: var(--muted); font-size: 0.9rem;"></span>
         <button id="logout-btn" type="button">Log out</button>
@@ -169,13 +169,25 @@
           try {
             const hostingUrl = `${location.protocol}//${location.host}`;
             const graceRaw = document.getElementById("s-grace").value;
+            // datetime-local inputs are naïve (no timezone). If we send the
+            // raw string the Cloud Functions runtime (UTC) will parse it as
+            // UTC while the browser treated it as local — the late/present
+            // comparison then uses two different wall-clock times. Normalize
+            // to a proper ISO-UTC string here so both sides agree.
+            const toIsoUtc = (v) => {
+              const d = new Date(v);
+              if (isNaN(d.getTime())) {
+                throw new Error("Please enter a valid date and time");
+              }
+              return d.toISOString();
+            };
             const session = await apiFetch("/sessions", {
               method: "POST",
               body: {
                 course_id: document.getElementById("s-course").value,
                 title: document.getElementById("s-title").value.trim(),
-                starts_at: document.getElementById("s-start").value,
-                ends_at: document.getElementById("s-end").value,
+                starts_at: toIsoUtc(document.getElementById("s-start").value),
+                ends_at: toIsoUtc(document.getElementById("s-end").value),
                 late_grace_minutes:
                   graceRaw === "" ? undefined : Number(graceRaw),
                 hostingUrl
@@ -445,4 +457,4 @@
       }
     </script>
   </body>
-</html>
+<

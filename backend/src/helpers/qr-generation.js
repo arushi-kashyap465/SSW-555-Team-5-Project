@@ -6,7 +6,10 @@ import { appConfig } from "../config/settings.js";
 
 export const buildScanUrl = (sessionId, token, hostingUrl) => {
   const base = (hostingUrl || appConfig.hostingUrl).replace(/\/$/, "");
-  return `${base}/scan.html?sessionId=${encodeURIComponent(
+  // Use the clean `/scan` path so Firebase's cleanUrls:true doesn't 301 us
+  // from /scan.html → /scan on the way in — one fewer hop for mobile Safari,
+  // which is strict about stacked redirects.
+  return `${base}/scan?sessionId=${encodeURIComponent(
     sessionId
   )}&token=${encodeURIComponent(token)}`;
 };

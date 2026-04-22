@@ -20,6 +20,18 @@
 //   - Default 10 minutes if the caller omits it.
 //   - Clamped to 0..180 so a stray huge value can't make the session
 //     effectively never-late, and a negative value can't flip the logic.
+import bcrypt from "bcrypt";
+import { sessionsCol } from "../config/firestoreCollections.js";
+import { getCourseById } from "./courses.js";
+import {
+  checkId,
+  checkString
+} from "../helpers/validation.js";
+import {
+  generateSessionToken,
+  generateQRCode
+} from "../helpers/qr-generation.js";
+
 const DEFAULT_LATE_GRACE_MINUTES = 10;
 const MAX_LATE_GRACE_MINUTES = 180;
 
@@ -35,17 +47,6 @@ const normalizeGrace = (v) => {
   }
   return Math.round(n);
 };
-import bcrypt from "bcrypt";
-import { sessionsCol } from "../config/firestoreCollections.js";
-import { getCourseById } from "./courses.js";
-import {
-  checkId,
-  checkString
-} from "../helpers/validation.js";
-import {
-  generateSessionToken,
-  generateQRCode
-} from "../helpers/qr-generation.js";
 
 const serialize = (id, data) => ({
   _id: id,
